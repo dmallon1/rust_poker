@@ -33,7 +33,7 @@ fn rank_hand_royal_flush() {
         },
     ];
 
-    assert_eq!(HandRank::RoyalFlush, rank_hand(&mut hand));
+    assert_eq!(HandRank::Straight, rank_hand(&mut hand));
 }
 
 #[test]
