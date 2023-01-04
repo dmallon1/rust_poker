@@ -1,18 +1,16 @@
 use rust_poker::*;
 
 #[test]
-fn rank_hand_royal_flush() {
+fn rank_hand_straight() {
     let mut hand = vec![
         Card {
             suit: Suit::Clubs,
-            card_type: CardType::Face {
-                face_character: FaceCharacter::Ace,
-            },
+            card_type: CardType::Number { number: 10 },
         },
         Card {
             suit: Suit::Clubs,
             card_type: CardType::Face {
-                face_character: FaceCharacter::King,
+                face_character: FaceCharacter::Jack,
             },
         },
         Card {
@@ -24,12 +22,14 @@ fn rank_hand_royal_flush() {
         Card {
             suit: Suit::Clubs,
             card_type: CardType::Face {
-                face_character: FaceCharacter::Jack,
+                face_character: FaceCharacter::King,
             },
         },
         Card {
             suit: Suit::Clubs,
-            card_type: CardType::Number { number: 10 },
+            card_type: CardType::Face {
+                face_character: FaceCharacter::Ace,
+            },
         },
     ];
 

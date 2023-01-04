@@ -171,8 +171,23 @@ pub fn rank_hand(hand: &mut [Card]) -> HandRank {
     // explict look for royal flush
     let is_highest_straight = false;
 
-    if is_royal_flush(hand) {
+    let royal_straight = is_royal_straight(hand);
+    let is_flush = is_flush(hand);
+
+    if royal_straight && is_flush {
         return HandRank::RoyalFlush;
+    }
+
+    let is_straight = is_straight(hand);
+
+    if is_straight && is_flush {
+        return HandRank::StraightFlush;
+    }
+
+    // TODO: handle other cases I'm skipping
+
+    if is_straight {
+        return HandRank::Straight;
     }
 
     for (i, card) in hand.iter().enumerate() {
@@ -218,7 +233,7 @@ pub fn rank_hand(hand: &mut [Card]) -> HandRank {
     HandRank::HighCard
 }
 
-fn is_royal_flush(hand: &mut [Card]) -> bool {
+fn is_royal_straight(hand: &mut [Card]) -> bool {
     if hand[0].card_type
         != (CardType::Face {
             face_character: FaceCharacter::Ace,
@@ -254,7 +269,59 @@ fn is_royal_flush(hand: &mut [Card]) -> bool {
 }
 
 fn is_straight(hand: &mut [Card]) -> bool {
+    for i in 0..4 {
+        let current_card = &hand[i];
+        let next_card = &hand[i + 1];
+
+        let expected_next_card_type = get_next_card_type(&current_card.card_type);
+
+        let next_card_type;
+        match expected_next_card_type {
+            None => return false,
+            Some(card_type) => next_card_type = card_type,
+        }
+
+        if next_card.card_type != next_card_type {
+            return false;
+        }
+    }
+
     true
+}
+
+fn get_next_card_type(card_type: &CardType) -> Option<CardType> {
+    match card_type {
+        CardType::Face { face_character } => match get_next_face_character(face_character) {
+            Some(next_face_character) => {
+                return Some(CardType::Face {
+                    face_character: next_face_character,
+                })
+            }
+            None => return None,
+        },
+        CardType::Number { number } => {
+            if *number == 10 {
+                return Some(CardType::Face {
+                    face_character: FaceCharacter::Jack,
+                });
+            }
+            return Some(CardType::Number { number: number + 1 });
+        }
+    }
+}
+
+/// Will return the next valid face character or None if the parameter is an Ace
+fn get_next_face_character(face: &FaceCharacter) -> Option<FaceCharacter> {
+    match face {
+        FaceCharacter::Ace => None,
+        FaceCharacter::King => Some(FaceCharacter::Ace),
+        FaceCharacter::Queen => Some(FaceCharacter::King),
+        FaceCharacter::Jack => Some(FaceCharacter::Queen),
+    }
+}
+
+fn is_flush(hand: &mut [Card]) -> bool {
+    false
 }
 
 #[derive(Debug, Eq)]
