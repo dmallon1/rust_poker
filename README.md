@@ -1,4 +1,10 @@
-Simple Poker Game in Rust
+# Simple Poker Game in Rust
+
+## To run project
+> cargo run
+
+## To run tests
+> cargo test
 
 Game Flow (MVP flow) - one round
 1. Setup players, can do all humans to start and pass the computer around, could eventually get to ai

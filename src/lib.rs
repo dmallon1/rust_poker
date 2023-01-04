@@ -157,10 +157,10 @@ impl Game {
 /// Returns the highest hand rank given a 5 card hand
 /// # Example
 /// 2 Spades, 2 Hearts, Queen Clubs, Queen Hearts, Queen Spades -> FullHouse
-fn rank_hand(hand: &mut [Card]) -> HandRank {
+pub fn rank_hand(hand: &mut [Card]) -> HandRank {
     // basically go through top to bottom and try to match each one,
     // should definitely be able to do this purely functional style, I'm just
-    // using an immutable borrow.
+    // using a mutable borrow.
 
     // first sort
     hand.sort();
@@ -219,12 +219,6 @@ fn rank_hand(hand: &mut [Card]) -> HandRank {
 }
 
 fn is_royal_flush(hand: &mut [Card]) -> bool {
-    vec![
-        FaceCharacter::Ace,
-        FaceCharacter::King,
-        FaceCharacter::Queen,
-        FaceCharacter::Jack,
-    ];
     if hand[0].card_type
         != (CardType::Face {
             face_character: FaceCharacter::Ace,
@@ -259,10 +253,14 @@ fn is_royal_flush(hand: &mut [Card]) -> bool {
     true
 }
 
+fn is_straight(hand: &mut [Card]) -> bool {
+    true
+}
+
 #[derive(Debug, Eq)]
-struct Card {
-    suit: Suit,
-    card_type: CardType,
+pub struct Card {
+    pub suit: Suit,
+    pub card_type: CardType,
 }
 
 impl Ord for Card {
@@ -285,13 +283,13 @@ impl PartialEq for Card {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-enum CardType {
+pub enum CardType {
     Face { face_character: FaceCharacter },
     Number { number: u8 },
 }
 
 #[derive(Debug, EnumIter, Clone, Copy, Eq, PartialEq)]
-enum Suit {
+pub enum Suit {
     Hearts,
     Diamonds,
     Spades,
@@ -299,7 +297,7 @@ enum Suit {
 }
 
 #[derive(Debug, EnumIter, PartialEq, Eq)]
-enum FaceCharacter {
+pub enum FaceCharacter {
     Jack,
     Queen,
     King,
@@ -321,7 +319,7 @@ enum Round {
 }
 
 #[derive(PartialEq, Debug)]
-enum HandRank {
+pub enum HandRank {
     RoyalFlush = 10,
     StraightFlush = 9,
     FourOfAKind = 8,
@@ -332,118 +330,4 @@ enum HandRank {
     TwoPair = 3,
     Pair = 2,
     HighCard = 1,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn rank_hand_royal_flush() {
-        let mut hand = vec![
-            Card {
-                suit: Suit::Clubs,
-                card_type: CardType::Face {
-                    face_character: FaceCharacter::Ace,
-                },
-            },
-            Card {
-                suit: Suit::Clubs,
-                card_type: CardType::Face {
-                    face_character: FaceCharacter::King,
-                },
-            },
-            Card {
-                suit: Suit::Clubs,
-                card_type: CardType::Face {
-                    face_character: FaceCharacter::Queen,
-                },
-            },
-            Card {
-                suit: Suit::Clubs,
-                card_type: CardType::Face {
-                    face_character: FaceCharacter::Jack,
-                },
-            },
-            Card {
-                suit: Suit::Clubs,
-                card_type: CardType::Number { number: 10 },
-            },
-        ];
-
-        assert_eq!(HandRank::RoyalFlush, rank_hand(&mut hand));
-    }
-
-    #[test]
-    fn rank_hand_straight_flush() {
-        let mut hand = vec![
-            Card {
-                suit: Suit::Spades,
-                card_type: CardType::Number { number: 8 },
-            },
-            Card {
-                suit: Suit::Spades,
-                card_type: CardType::Number { number: 7 },
-            },
-            Card {
-                suit: Suit::Spades,
-                card_type: CardType::Number { number: 6 },
-            },
-            Card {
-                suit: Suit::Spades,
-                card_type: CardType::Number { number: 5 },
-            },
-            Card {
-                suit: Suit::Spades,
-                card_type: CardType::Number { number: 4 },
-            },
-        ];
-
-        assert_eq!(HandRank::StraightFlush, rank_hand(&mut hand));
-    }
-
-    #[test]
-    fn rank_hand_high_card() {
-        let mut hand = vec![
-            Card {
-                suit: Suit::Diamonds,
-                card_type: CardType::Face {
-                    face_character: FaceCharacter::Ace,
-                },
-            },
-            Card {
-                suit: Suit::Hearts,
-                card_type: CardType::Number { number: 7 },
-            },
-            Card {
-                suit: Suit::Clubs,
-                card_type: CardType::Number { number: 5 },
-            },
-            Card {
-                suit: Suit::Diamonds,
-                card_type: CardType::Number { number: 3 },
-            },
-            Card {
-                suit: Suit::Spades,
-                card_type: CardType::Number { number: 2 },
-            },
-        ];
-
-        assert_eq!(HandRank::HighCard, rank_hand(&mut hand));
-    }
-
-    //     #[test]
-    //     fn case_insensitive() {
-    //         let query = "rUsT";
-    //         let contents = "\
-    // Rust:
-    // safe, fast, productive.
-    // Pick three.
-    // Trust me.";
-
-    //         assert_eq!(
-    //             vec!["Rust:", "Trust me."],
-    //             search_case_insensitive(query, contents)
-    //         );
-    //     }
 }
