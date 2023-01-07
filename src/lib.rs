@@ -372,7 +372,7 @@ impl PartialEq for Card {
     }
 }
 
-#[derive(Debug, Eq, Hash, Clone)]
+#[derive(Debug, Eq, Hash, Clone, PartialOrd, PartialEq)]
 pub enum CardType {
     Face { face_character: FaceCharacter },
     Number { number: u8 },
@@ -394,18 +394,6 @@ impl Ord for CardType {
                 CardType::Number { number } => self_number.cmp(number),
             },
         }
-    }
-}
-
-impl PartialOrd for CardType {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl PartialEq for CardType {
-    fn eq(&self, other: &Self) -> bool {
-        true
     }
 }
 
