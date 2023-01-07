@@ -79,6 +79,23 @@ pub fn play_game(num_players: u8) -> Result<(), &'static str> {
 
     // figure out who won
     println!("player hands {:?}", game.players);
+    // go through all players cards and generate the different hand possiblites
+    // 7 choose 5 for both players
+
+    let mut player_one_cards: Vec<Card> = game.players[0].hand.clone();
+    let mut game_cards = game.shared_cards.clone();
+    player_one_cards.append(&mut game_cards);
+    println!("player 1 cards {:?}", player_one_cards);
+    let combinations = player_one_cards.iter().combinations(5);
+    println!("combinations");
+    for v in combinations {
+        println!("{:?}", v);
+    }
+
+    // sort each of the different combinations
+    // run handrank on them
+    // pull the top rank for all players
+    // compare them and declare winner
 
     println!("GAME OVER");
     Ok(())
@@ -330,7 +347,7 @@ fn is_flush(hand: &[Card]) -> bool {
     true
 }
 
-#[derive(Debug, Eq)]
+#[derive(Debug, Eq, Clone)]
 pub struct Card {
     pub suit: Suit,
     pub card_type: CardType,
@@ -355,10 +372,41 @@ impl PartialEq for Card {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, Hash, Clone)]
 pub enum CardType {
     Face { face_character: FaceCharacter },
     Number { number: u8 },
+}
+
+impl Ord for CardType {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match self {
+            CardType::Face {
+                face_character: self_face_character,
+            } => match other {
+                CardType::Face { face_character } => self_face_character.cmp(face_character),
+                CardType::Number { number: _ } => Ordering::Greater,
+            },
+            CardType::Number {
+                number: self_number,
+            } => match other {
+                CardType::Face { face_character: _ } => Ordering::Less,
+                CardType::Number { number } => self_number.cmp(number),
+            },
+        }
+    }
+}
+
+impl PartialOrd for CardType {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for CardType {
+    fn eq(&self, other: &Self) -> bool {
+        true
+    }
 }
 
 #[derive(Debug, EnumIter, Clone, Copy, Eq, PartialEq)]
@@ -369,7 +417,7 @@ pub enum Suit {
     Clubs,
 }
 
-#[derive(Debug, EnumIter, PartialEq, Eq, Hash)]
+#[derive(Debug, EnumIter, PartialEq, Eq, Hash, Clone, PartialOrd, Ord)]
 pub enum FaceCharacter {
     Jack,
     Queen,
@@ -391,6 +439,7 @@ enum Round {
     River,
 }
 
+// TODO: lowest to highest
 #[derive(PartialEq, Debug)]
 pub enum HandRank {
     RoyalFlush = 10,
