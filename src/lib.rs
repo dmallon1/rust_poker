@@ -2,9 +2,11 @@
 // use std::sync::Arc;
 
 // use compare::Compare;
+use itertools::Itertools;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::cmp::{Eq, Ordering, PartialEq};
+use std::collections::HashMap;
 use strum::IntoEnumIterator; // 0.17.1
 use strum_macros::EnumIter; // 0.17.1
 
@@ -157,19 +159,12 @@ impl Game {
 /// Returns the highest hand rank given a 5 card hand
 /// # Example
 /// 2 Spades, 2 Hearts, Queen Clubs, Queen Hearts, Queen Spades -> FullHouse
-pub fn rank_hand(hand: &mut [Card]) -> HandRank {
+pub fn rank_hand(hand: &[Card]) -> HandRank {
     // basically go through top to bottom and try to match each one,
     // should definitely be able to do this purely functional style, I'm just
     // using a mutable borrow.
 
-    // first sort
-    hand.sort();
-
-    // royal flush
-    let first_suit = hand[0].suit;
-    // has to be an ace high straight with all the same suit
-    // explict look for royal flush
-    let is_highest_straight = false;
+    // TODO: sort elsewhere, not here, assume it's in ascending order
 
     let royal_straight = is_royal_straight(hand);
     let is_flush = is_flush(hand);
@@ -184,66 +179,74 @@ pub fn rank_hand(hand: &mut [Card]) -> HandRank {
         return HandRank::StraightFlush;
     }
 
-    // TODO: handle other cases I'm skipping
+    // count the cards into a heap
+    let mut hash_map: HashMap<&CardType, i32> = HashMap::new();
+    for card in hand {
+        let mut val = 1;
+        if hash_map.contains_key(&card.card_type) {
+            val = *hash_map.get_mut(&card.card_type).unwrap();
+            val += 1;
+        }
+        hash_map.insert(&card.card_type, val);
+    }
+
+    // iterate (sorted by values)
+    let mut three_of_a_kind = false;
+    let mut num_pairs = 0;
+    for (_, v) in hash_map.iter().sorted_by_key(|x| x.1).rev() {
+        if *v == 4 {
+            return HandRank::FourOfAKind;
+        }
+        if *v == 3 {
+            three_of_a_kind = true;
+        }
+        if *v == 2 {
+            num_pairs += 1;
+        }
+    }
+
+    if three_of_a_kind && num_pairs > 0 {
+        return HandRank::FullHouse;
+    }
+
+    if three_of_a_kind {
+        return HandRank::ThreeOfAKind;
+    }
+
+    if num_pairs == 2 {
+        return HandRank::TwoPair;
+    }
+
+    if num_pairs == 1 {
+        return HandRank::Pair;
+    }
+
+    // four of a kind
+
+    // full house
+
+    if is_flush {
+        return HandRank::Flush;
+    }
 
     if is_straight {
         return HandRank::Straight;
     }
 
-    for (i, card) in hand.iter().enumerate() {
-        let res = match &card.card_type {
-            CardType::Face { face_character } => match face_character {
-                FaceCharacter::Ace => {
-                    if i != 4 {
-                        break;
-                    }
-                }
-                FaceCharacter::King => {
-                    if i != 3 {
-                        break;
-                    }
-                }
-                FaceCharacter::Jack => {
-                    if i != 2 {
-                        break;
-                    }
-                }
-                FaceCharacter::Queen => {
-                    if i != 1 {
-                        break;
-                    }
-                }
-            },
-            CardType::Number { number } => {
-                if *number != 10 {
-                    // why?
-                    break;
-                }
-            }
-        };
-        // if !res {
-        //     break;
-        // }
-
-        // card[i] ==
-    }
-
-    let is_flush = hand.iter().all(|c| matches!(c.suit, first_suit));
+    // three of a kind
+    // two pair
+    // pair
 
     HandRank::HighCard
 }
 
-fn is_royal_straight(hand: &mut [Card]) -> bool {
-    if hand[0].card_type
-        != (CardType::Face {
-            face_character: FaceCharacter::Ace,
-        })
-    {
+fn is_royal_straight(hand: &[Card]) -> bool {
+    if hand[0].card_type != (CardType::Number { number: 10 }) {
         return false;
     }
     if hand[1].card_type
         != (CardType::Face {
-            face_character: FaceCharacter::King,
+            face_character: FaceCharacter::Jack,
         })
     {
         return false;
@@ -257,18 +260,23 @@ fn is_royal_straight(hand: &mut [Card]) -> bool {
     }
     if hand[3].card_type
         != (CardType::Face {
-            face_character: FaceCharacter::Jack,
+            face_character: FaceCharacter::King,
         })
     {
         return false;
     }
-    if hand[4].card_type != (CardType::Number { number: 10 }) {
+    if hand[4].card_type
+        != (CardType::Face {
+            face_character: FaceCharacter::Ace,
+        })
+    {
         return false;
     }
+
     true
 }
 
-fn is_straight(hand: &mut [Card]) -> bool {
+fn is_straight(hand: &[Card]) -> bool {
     for i in 0..4 {
         let current_card = &hand[i];
         let next_card = &hand[i + 1];
@@ -320,8 +328,14 @@ fn get_next_face_character(face: &FaceCharacter) -> Option<FaceCharacter> {
     }
 }
 
-fn is_flush(hand: &mut [Card]) -> bool {
-    false
+fn is_flush(hand: &[Card]) -> bool {
+    let first_suit = &hand[0].suit;
+    for i in 1..4 {
+        if first_suit != &hand[i].suit {
+            return false;
+        }
+    }
+    true
 }
 
 #[derive(Debug, Eq)]
@@ -349,7 +363,7 @@ impl PartialEq for Card {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Hash)]
 pub enum CardType {
     Face { face_character: FaceCharacter },
     Number { number: u8 },
@@ -363,7 +377,7 @@ pub enum Suit {
     Clubs,
 }
 
-#[derive(Debug, EnumIter, PartialEq, Eq)]
+#[derive(Debug, EnumIter, PartialEq, Eq, Hash)]
 pub enum FaceCharacter {
     Jack,
     Queen,

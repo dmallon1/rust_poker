@@ -1,7 +1,9 @@
 # Simple Poker Game in Rust
 
 ## To run project
-> cargo run
+> cargo run -- 2
+
+where 2 represents the number of players in the game
 
 ## To run tests
 > cargo test
