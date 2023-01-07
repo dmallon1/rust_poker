@@ -209,6 +209,14 @@ pub fn rank_hand(hand: &[Card]) -> HandRank {
         return HandRank::FullHouse;
     }
 
+    if is_flush {
+        return HandRank::Flush;
+    }
+
+    if is_straight {
+        return HandRank::Straight;
+    }
+
     if three_of_a_kind {
         return HandRank::ThreeOfAKind;
     }
@@ -220,22 +228,6 @@ pub fn rank_hand(hand: &[Card]) -> HandRank {
     if num_pairs == 1 {
         return HandRank::Pair;
     }
-
-    // four of a kind
-
-    // full house
-
-    if is_flush {
-        return HandRank::Flush;
-    }
-
-    if is_straight {
-        return HandRank::Straight;
-    }
-
-    // three of a kind
-    // two pair
-    // pair
 
     HandRank::HighCard
 }
