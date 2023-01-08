@@ -2,11 +2,12 @@
 // use std::sync::Arc;
 
 // use compare::Compare;
-use itertools::Itertools;
+use itertools::{Combinations, Itertools};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::cmp::{Eq, Ordering, PartialEq};
 use std::collections::HashMap;
+use std::fmt;
 use strum::IntoEnumIterator; // 0.17.1
 use strum_macros::EnumIter; // 0.17.1
 
@@ -86,13 +87,26 @@ pub fn play_game(num_players: u8) -> Result<(), &'static str> {
     let mut game_cards = game.shared_cards.clone();
     player_one_cards.append(&mut game_cards);
     println!("player 1 cards {:?}", player_one_cards);
-    let combinations = player_one_cards.iter().combinations(5);
+    let combinations: Combinations<std::slice::Iter<Card>> =
+        player_one_cards.iter().combinations(5);
     println!("combinations");
-    for v in combinations {
-        println!("{:?}", v);
-    }
 
     // sort each of the different combinations
+    let foo: Vec<Vec<&Card>> = combinations
+        .into_iter()
+        .map(|h| {
+            let mut h = h.to_vec();
+            h.sort();
+            h
+        })
+        .collect();
+
+    for v in foo {
+        print_cards(&v);
+        print!("rank: {:?}", rank_hand(&v));
+        println!();
+    }
+
     // run handrank on them
     // pull the top rank for all players
     // compare them and declare winner
@@ -101,11 +115,16 @@ pub fn play_game(num_players: u8) -> Result<(), &'static str> {
     Ok(())
 }
 
+fn print_cards(cards: &Vec<&Card>) {
+    for c in cards {
+        print!("{} ", c);
+    }
+}
+
 #[derive(Debug)]
 struct Game {
     cards: Vec<Card>,
     players: Vec<Player>,
-    dealer_position: u8,
     round: Round,
     shared_cards: Vec<Card>,
 }
@@ -146,7 +165,6 @@ impl Game {
             players: (1..num_players + 1)
                 .map(|_| Player { hand: vec![] })
                 .collect(),
-            dealer_position: 0,
             round: Round::PreFlop,
             shared_cards: vec![],
         })
@@ -176,7 +194,7 @@ impl Game {
 /// Returns the highest hand rank given a 5 card hand
 /// # Example
 /// 2 Spades, 2 Hearts, Queen Clubs, Queen Hearts, Queen Spades -> FullHouse
-pub fn rank_hand(hand: &[Card]) -> HandRank {
+pub fn rank_hand(hand: &Vec<&Card>) -> HandRank {
     // basically go through top to bottom and try to match each one,
     // should definitely be able to do this purely functional style, I'm just
     // using a mutable borrow.
@@ -249,7 +267,7 @@ pub fn rank_hand(hand: &[Card]) -> HandRank {
     HandRank::HighCard
 }
 
-fn is_royal_straight(hand: &[Card]) -> bool {
+fn is_royal_straight(hand: &Vec<&Card>) -> bool {
     if hand[0].card_type != (CardType::Number { number: 10 }) {
         return false;
     }
@@ -285,7 +303,7 @@ fn is_royal_straight(hand: &[Card]) -> bool {
     true
 }
 
-fn is_straight(hand: &[Card]) -> bool {
+fn is_straight(hand: &Vec<&Card>) -> bool {
     for i in 0..4 {
         let current_card = &hand[i];
         let next_card = &hand[i + 1];
@@ -337,7 +355,7 @@ fn get_next_face_character(face: &FaceCharacter) -> Option<FaceCharacter> {
     }
 }
 
-fn is_flush(hand: &[Card]) -> bool {
+fn is_flush(hand: &Vec<&Card>) -> bool {
     let first_suit = &hand[0].suit;
     for i in 1..4 {
         if first_suit != &hand[i].suit {
@@ -355,8 +373,7 @@ pub struct Card {
 
 impl Ord for Card {
     fn cmp(&self, other: &Self) -> Ordering {
-        Ordering::Equal
-        // self.height.cmp(&other.height)
+        self.card_type.cmp(&other.card_type)
     }
 }
 
@@ -369,6 +386,12 @@ impl PartialOrd for Card {
 impl PartialEq for Card {
     fn eq(&self, other: &Self) -> bool {
         self.suit == other.suit && self.card_type == other.card_type
+    }
+}
+
+impl fmt::Display for Card {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "[{} {:?}]", self.card_type, self.suit)
     }
 }
 
@@ -393,6 +416,15 @@ impl Ord for CardType {
                 CardType::Face { face_character: _ } => Ordering::Less,
                 CardType::Number { number } => self_number.cmp(number),
             },
+        }
+    }
+}
+
+impl fmt::Display for CardType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            CardType::Face { face_character } => write!(f, "{:?}", face_character),
+            CardType::Number { number } => write!(f, "{:?}", number),
         }
     }
 }
