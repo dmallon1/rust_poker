@@ -10,6 +10,7 @@ fn compare_card() {
             face_character: FaceCharacter::Jack,
         },
     };
+
     let card2 = Card {
         suit: Suit::Diamonds,
         card_type: CardType::Face {
