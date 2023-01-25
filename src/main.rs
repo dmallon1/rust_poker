@@ -3,7 +3,9 @@ use std::env;
 use std::process;
 
 fn main() {
+    println!("--------------------------------------------------------------------------------");
     println!("Welcome to poker!");
+    println!("--------------------------------------------------------------------------------");
     // take some command line arguments
     // number of players?
     let args: Vec<String> = env::args().collect();

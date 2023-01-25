@@ -1,15 +1,12 @@
-// use core::num;
-// use std::sync::Arc;
-
-// use compare::Compare;
 use itertools::{Combinations, Itertools};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use std::cmp::{Eq, Ordering, PartialEq};
 use std::collections::HashMap;
-use std::fmt;
-use strum::IntoEnumIterator; // 0.17.1
-use strum_macros::EnumIter; // 0.17.1
+use std::collections::HashSet;
+use std::{fmt, io};
+use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
 
 pub struct Config {
     pub number_of_players: u8,
@@ -34,19 +31,16 @@ pub fn play_game(num_players: u8) -> Result<(), &'static str> {
     let mut game = Game::new(&num_players)?;
     game.shuffle_cards();
 
-    println!("initializing cards, {:?}", game);
-
-    println!("card count {}", game.cards.len());
-
     game.deal_cards();
-    println!("initializing cards, {:?}", game);
 
     // for all rounds
     while game.is_valid() {
         match game.round {
             Round::PreFlop => {
                 // do betting and choosing
-                println!("pre flop");
+                println!("ROUND::pre flop");
+                println!("---------------");
+                game = game.run_game_loop();
                 game.round = Round::Flop
             }
             Round::Flop => {
@@ -57,22 +51,26 @@ pub fn play_game(num_players: u8) -> Result<(), &'static str> {
                     .push(game.cards.pop().expect("somehow ran out of cards"));
                 game.shared_cards
                     .push(game.cards.pop().expect("somehow ran out of cards"));
-                println!("flop: {:?}", game.shared_cards);
-                // do betting and choosing
+                println!("ROUND::flop");
+                println!("---------------");
+                game = game.run_game_loop();
                 game.round = Round::Turn
             }
             Round::Turn => {
                 game.shared_cards
                     .push(game.cards.pop().expect("somehow ran out of cards"));
                 // do betting and choosing
-                println!("turn: {:?}", game.shared_cards);
+                println!("ROUND::turn");
+                println!("---------------");
+                game = game.run_game_loop();
                 game.round = Round::River
             }
             Round::River => {
                 game.shared_cards
                     .push(game.cards.pop().expect("somehow ran out of cards"));
-                // do betting and choosing
-                println!("river: {:?}", game.shared_cards);
+                println!("ROUND::river");
+                println!("---------------");
+                game = game.run_game_loop();
                 break;
             }
         }
@@ -83,10 +81,16 @@ pub fn play_game(num_players: u8) -> Result<(), &'static str> {
     // go through all players cards and generate the different hand possiblites
     // 7 choose 5 for both players
 
-    let mut player_one_cards: Vec<Card> = game.players[0].hand.clone();
+    let mut player_one_cards: Vec<Card> = game.players[0].cards.clone();
     let mut game_cards = game.shared_cards.clone();
     player_one_cards.append(&mut game_cards);
     println!("player 1 cards {:?}", player_one_cards);
+
+    // this is not correct, this will sometimes return combinations that are just the cards on the table and not any
+    // in the players hands. The correct way would have to be
+    // * both cards in hand + all combinations of remaining three
+    // * one card in hard + all combinations of remaining four
+    // * same thing for other card
     let combinations: Combinations<std::slice::Iter<Card>> =
         player_one_cards.iter().combinations(5);
     println!("combinations");
@@ -121,12 +125,33 @@ fn print_cards(cards: &Vec<&Card>) {
     }
 }
 
+fn alternate_print_cards(cards: &Vec<Card>) {
+    print!("current hand: ");
+    for c in cards {
+        print!("{} ", c);
+    }
+    println!();
+}
+
+fn print_table_cards(cards: &Vec<Card>) {
+    print!("current cards... ");
+    for c in cards {
+        print!("{} ", c);
+    }
+    println!();
+}
+
 #[derive(Debug)]
 struct Game {
     cards: Vec<Card>,
     players: Vec<Player>,
     round: Round,
     shared_cards: Vec<Card>,
+    current_dealer: u16,
+    current_pot: Vec<Chip>,
+    small_blind: u16,
+    big_blind: u16,
+    folded_player_ids: HashSet<u16>,
 }
 
 impl Game {
@@ -163,10 +188,18 @@ impl Game {
         Ok(Game {
             cards,
             players: (1..num_players + 1)
-                .map(|_| Player { hand: vec![] })
+                .map(|_| Player {
+                    cards: vec![],
+                    chips: vec![Chip::One, Chip::Five, Chip::TwentyFive, Chip::Fifty],
+                })
                 .collect(),
             round: Round::PreFlop,
             shared_cards: vec![],
+            current_dealer: 0,
+            current_pot: vec![],
+            small_blind: 1,
+            big_blind: 2,
+            folded_player_ids: HashSet::new(),
         })
     }
 
@@ -181,13 +214,57 @@ impl Game {
             let card1 = self.cards.pop().expect("somehow ran out of cards");
             let card2 = self.cards.pop().expect("somehow ran out of cards");
 
-            player_hand.hand.push(card1);
-            player_hand.hand.push(card2);
+            player_hand.cards.push(card1);
+            player_hand.cards.push(card2);
         }
     }
 
     fn is_valid(&self) -> bool {
-        self.players.iter().filter(|p| p.hand.len() > 0).count() > 1
+        self.players.iter().filter(|p| p.cards.len() > 0).count() > 1
+    }
+
+    fn print_game(&self) {
+        println!("pot... {:?}", self.current_pot);
+        // println!("current cards... {:?}", self.shared_cards);
+        print_table_cards(&self.shared_cards);
+        println!("dealer indicator... {:?}", self.current_dealer);
+        println!(
+            "big blin / small blind... {:?} / {:?}",
+            self.small_blind, self.big_blind
+        );
+        println!("");
+    }
+
+    fn run_game_loop(mut self) -> Game {
+        self.print_game();
+        // allow all players to bet
+        for i in 0..self.players.len() {
+            let player = self.players.get(i).expect("should be");
+            if self.folded_player_ids.contains(&i.try_into().unwrap()) {
+                continue;
+            }
+
+            println!("player {}", i + 1);
+            alternate_print_cards(&player.cards);
+            println!("chips: {:?}", player.chips);
+            println!("Choose your move:");
+            println!("- c for check");
+            println!("- b to bet");
+            println!("- f to fold");
+            let mut line = String::new();
+            io::stdin()
+                .read_line(&mut line)
+                .expect("failed to pull guess");
+            println!("input: {}", line);
+
+            // process input
+            if line.trim() == "f" {
+                println!("player {} folded", i + 1);
+                let player_id: u16 = i.clone().try_into().unwrap();
+                self.folded_player_ids.insert(player_id);
+            }
+        }
+        self
     }
 }
 
@@ -448,7 +525,8 @@ pub enum FaceCharacter {
 #[derive(Debug)]
 struct Player {
     // could potentially make this an enum
-    hand: Vec<Card>, // this could also be an array of size 5
+    cards: Vec<Card>, // this could also be an array of size 5
+    chips: Vec<Chip>,
 }
 
 #[derive(Debug)]
@@ -472,4 +550,12 @@ pub enum HandRank {
     TwoPair = 3,
     Pair = 2,
     HighCard = 1,
+}
+
+#[derive(Debug)]
+pub enum Chip {
+    One,
+    Five,
+    TwentyFive,
+    Fifty,
 }
