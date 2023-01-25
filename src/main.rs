@@ -10,8 +10,7 @@ fn main() {
     // number of players?
     let args: Vec<String> = env::args().collect();
 
-    let config = Config::new(&args)
-    .unwrap_or_else(|_| {
+    let config = Config::new(&args).unwrap_or_else(|_| {
         eprintln!("problem getting args, expected something like \"cargo run -- 4\"");
         process::exit(1);
     });
