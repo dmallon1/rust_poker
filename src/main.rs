@@ -11,7 +11,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
 
     let config = Config::new(&args).unwrap_or_else(|_| {
-        eprintln!("problem getting args, expected something like \"cargo run -- 4\"");
+        eprintln!("problem getting args, expected something 
         process::exit(1);
     });
 
