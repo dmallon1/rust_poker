@@ -8,7 +8,7 @@ where 2 represents the number of players in the game
 ## To run tests
 > cargo test
 
-Game Flow (MVP flow) - one round
+## Game Flow (MVP flow) - one round
 1. Setup players, can do all humans to start and pass the computer around, could eventually get to ai
 2. Start round and deal cards
     * deck is shuffled
